@@ -2,34 +2,50 @@ import { notFound } from 'next/navigation'
 import { CustomMDX } from 'app/components/mdx'
 import { formatDate, getBlogPosts } from 'app/blog/utils'
 import { baseUrl } from 'app/sitemap'
+import type { Metadata } from 'next'
+
+type Props = {
+  params: Promise<{
+    slug: string
+  }>
+}
 
 export async function generateStaticParams() {
-  let posts = getBlogPosts()
+  const posts = getBlogPosts()
 
   return posts.map((post) => ({
     slug: post.slug,
   }))
 }
 
-export function generateMetadata({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug)
+export async function generateMetadata({
+  params,
+}: Props): Promise<Metadata> {
+  const { slug } = await params
+
+  const post = getBlogPosts().find((post) => post.slug === slug)
+
   if (!post) {
-    return
+    return {}
   }
 
-  let {
+  const {
     title,
     publishedAt: publishedTime,
     summary: description,
     image,
   } = post.metadata
-  let ogImage = image
-    ? image
+
+  const ogImage = image
+    ? image.startsWith('http')
+      ? image
+      : `${baseUrl}${image}`
     : `${baseUrl}/og?title=${encodeURIComponent(title)}`
 
   return {
     title,
     description,
+
     openGraph: {
       title,
       description,
@@ -42,6 +58,7 @@ export function generateMetadata({ params }) {
         },
       ],
     },
+
     twitter: {
       card: 'summary_large_image',
       title,
@@ -51,12 +68,20 @@ export function generateMetadata({ params }) {
   }
 }
 
-export default function Blog({ params }) {
-  let post = getBlogPosts().find((post) => post.slug === params.slug)
+export default async function Blog({ params }: Props) {
+  const { slug } = await params
+
+  const post = getBlogPosts().find((post) => post.slug === slug)
 
   if (!post) {
     notFound()
   }
+
+  const imageUrl = post.metadata.image
+    ? post.metadata.image.startsWith('http')
+      ? post.metadata.image
+      : `${baseUrl}${post.metadata.image}`
+    : `${baseUrl}/og?title=${encodeURIComponent(post.metadata.title)}`
 
   return (
     <section>
@@ -67,29 +92,34 @@ export default function Blog({ params }) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'BlogPosting',
+
             headline: post.metadata.title,
             datePublished: post.metadata.publishedAt,
             dateModified: post.metadata.publishedAt,
             description: post.metadata.summary,
-            image: post.metadata.image
-              ? `${baseUrl}${post.metadata.image}`
-              : `/og?title=${encodeURIComponent(post.metadata.title)}`,
+
+            image: imageUrl,
+
             url: `${baseUrl}/blog/${post.slug}`,
+
             author: {
               '@type': 'Person',
-              name: 'My Portfolio',
+              name: 'Ozodjon',
             },
           }),
         }}
       />
+
       <h1 className="title font-semibold text-2xl tracking-tighter">
         {post.metadata.title}
       </h1>
+
       <div className="flex justify-between items-center mt-2 mb-8 text-sm">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           {formatDate(post.metadata.publishedAt)}
         </p>
       </div>
+
       <article className="prose">
         <CustomMDX source={post.content} />
       </article>
