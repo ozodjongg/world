@@ -7,7 +7,7 @@ export default function Page() {
         My Blog
       </h1>
       <p className="mb-4">
-        {`Bu Ozodjon Tirkachev blog sahifasi.`}
+        {`Bu Ozod Tirkachev blog sahifasi.`}
       </p>
       <div className="my-8">
         <BlogPosts />
